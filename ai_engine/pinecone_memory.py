@@ -1,7 +1,7 @@
 import os
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_ollama import OllamaEmbeddings
 
 # Initialize Pinecone Client (Cloud Long-Term Memory)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "dummy-pinecone-key")

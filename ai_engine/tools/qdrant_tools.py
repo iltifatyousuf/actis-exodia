@@ -2,8 +2,7 @@ import os
 from langchain_core.tools import tool
 from qdrant_client import QdrantClient
 from langchain_community.vectorstores import Qdrant
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_openai import OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 
 # Initialize Qdrant Client (pointing to our local or remote Docker cluster)
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")

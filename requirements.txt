@@ -1,0 +1,32 @@
+# ACTIS Exodia - Python Dependencies
+# Core AI / LangChain
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-ollama>=0.2.0
+langgraph>=0.2.0
+
+# Vector Databases
+qdrant-client>=1.12.0
+langchain-pinecone>=0.2.0
+pinecone-client>=6.0.0
+
+# Streaming & Message Broker
+confluent-kafka>=2.6.0
+
+# API Gateway
+fastapi>=0.141.0
+uvicorn>=0.53.0
+
+# Caching
+redis>=5.0.0
+
+# Observability
+prometheus-client>=0.21.0
+
+# Data Processing
+apache-flink>=2.3.0
+
+# Utilities
+requests>=2.32.0
+python-dotenv>=1.0.0

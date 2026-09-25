@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 
 # SIEM Configuration
 SPLUNK_HEC_URL = os.getenv("SPLUNK_HEC_URL", "https://splunk.exodia.local:8088/services/collector/event")
@@ -17,7 +17,7 @@ def forward_to_siem(alert_id: str, threat_data: dict, ai_analysis: str, soar_act
     print(f"\n[SIEM FORWARDER] Dispatching Incident {alert_id} to Splunk & Elasticsearch...")
     
     payload = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "incident_id": alert_id,
         "source": "Exodia LangGraph AI Orchestrator",
         "threat_telemetry": threat_data,
