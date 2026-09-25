@@ -21,7 +21,19 @@ ctk.set_default_color_theme("green")
 
 def get_project_root():
     if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
+        # When frozen, exe is in dist/ — project root is one level up
+        exe_dir = os.path.dirname(sys.executable)
+        parent = os.path.dirname(exe_dir)
+        # Check if parent has ai_engine (meaning we're in dist/)
+        if os.path.isdir(os.path.join(parent, 'ai_engine')):
+            return parent
+        # Check if cwd has ai_engine (shortcut sets WorkingDirectory)
+        if os.path.isdir(os.path.join(os.getcwd(), 'ai_engine')):
+            return os.getcwd()
+        # Check exe_dir itself
+        if os.path.isdir(os.path.join(exe_dir, 'ai_engine')):
+            return exe_dir
+        return parent  # best guess
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_asset_path(filename):
@@ -119,11 +131,12 @@ class ExodiaDesktop(ctk.CTk):
 
     def get_python_exe(self):
         if getattr(sys, 'frozen', False):
-            # When frozen, find the venv python relative to the exe
-            base = os.path.dirname(sys.executable)
+            # When frozen, find the venv python relative to project root
             candidates = [
-                os.path.join(base, 'venv', 'Scripts', 'python.exe'),
-                os.path.join(os.path.dirname(base), 'venv', 'Scripts', 'python.exe'),
+                os.path.join(get_project_root(), 'venv', 'Scripts', 'python.exe'),
+                os.path.join(os.path.dirname(sys.executable), 'venv', 'Scripts', 'python.exe'),
+                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'venv', 'Scripts', 'python.exe'),
+                os.path.join(os.getcwd(), 'venv', 'Scripts', 'python.exe'),
             ]
             for c in candidates:
                 if os.path.exists(c):

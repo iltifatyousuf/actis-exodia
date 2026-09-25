@@ -1,0 +1,15 @@
+{
+    "demo_mode": false,
+    "gateway_url": "http://localhost:8080",
+    "kafka_broker": "localhost:9092",
+    "neo4j_uri": "bolt://localhost:7687",
+    "neo4j_password": "exodia_admin",
+    "ollama_url": "http://localhost:11434",
+    "llm_model": "llama3.2",
+    "playbooks": {
+        "Cloudflare WAF IP Ban": true,
+        "CrowdStrike EDR Host Isolation": true,
+        "Slack Approval Webhook": true,
+        "AWS IAM Policy Revocation": false
+    }
+}
