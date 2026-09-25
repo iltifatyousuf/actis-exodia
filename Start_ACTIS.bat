@@ -1,9 +1,9 @@
 @echo off
-title ACTIS Exodia - Enterprise Threat Intelligence Platform
+title Exodia - Enterprise Threat Intelligence Platform
 color 0A
 echo.
 echo ============================================
-echo    ACTIS EXODIA - BOOTING ALL SYSTEMS
+echo        EXODIA - BOOTING ALL SYSTEMS
 echo ============================================
 echo.
 
