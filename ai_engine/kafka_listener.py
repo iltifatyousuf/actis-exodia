@@ -16,10 +16,21 @@ THREATS_PROCESSED = Counter('actis_threats_processed_total', 'Total number of ne
 THREATS_MITIGATED = Counter('actis_threats_mitigated_total', 'Total number of threats successfully blocked/mitigated')
 AI_INFERENCE_TIME = Summary('actis_ai_inference_seconds', 'Time spent waiting for the Llama 3.2 Multi-Agent Orchestrator')
 
+from ai_engine.redis_cache import check_threat_cache, set_threat_cache
+
 def analyze_threat_with_ai(alert_data: dict):
     """Passes the Kafka alert to the local ACTIS Exodia Agent."""
     print(f"\n[ACTIS AI] Analyzing new network alert: {alert_data['alert_id']}...")
     
+    # Check Redis Cache
+    target_ip = alert_data.get("src_ip", "unknown")
+    if target_ip != "unknown":
+        cached_verdict = check_threat_cache(target_ip)
+        if cached_verdict:
+            THREATS_PROCESSED.inc()
+            THREATS_MITIGATED.inc()
+            return
+
     print(f"\n[ACTIS ORCHESTRATOR] Routing alert {alert_data['alert_id']} to Sub-Agents...")
     
     prompt = f"New network packet detected: {json.dumps(alert_data)}"
@@ -27,17 +38,25 @@ def analyze_threat_with_ai(alert_data: dict):
     THREATS_PROCESSED.inc()
     start_time = time.time()
     
+    final_response = ""
     try:
-        from ai_engine.multi_agent_orchestrator import orchestrator_app
+        from ai_engine.multi_agent_orchestrator import workflow
         
         # Stream the multi-agent workflow
-        for chunk in orchestrator_app.stream({"messages": [HumanMessage(content=prompt)], "next_agent": ""}):
+        for chunk in workflow.stream({"messages": [HumanMessage(content=prompt)], "next_agent": ""}):
             for node_name, node_state in chunk.items():
                 if node_name != "Supervisor":
-                    print(f"\n{node_state['messages'][-1].content}")
+                    msg_content = node_state['messages'][-1].content
+                    final_response = msg_content
+                    print(f"\n{msg_content}")
                     
         print("\n[Exodia] Threat successfully mitigated and logged for compliance.\n")
         THREATS_MITIGATED.inc()
+        
+        # Save to Redis Hot Cache to prevent re-processing
+        if target_ip != "unknown":
+            set_threat_cache(target_ip, {"action": final_response}, ttl_seconds=3600)
+            
     except Exception as e:
         print(f"Error during Multi-Agent orchestration: {e}")
     finally:
