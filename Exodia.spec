@@ -6,7 +6,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('venv/Lib/site-packages/customtkinter', 'customtkinter'), ('desktop_app/logo.png', 'desktop_app')],
-    hiddenimports=[],
+    hiddenimports=['PIL', 'PIL._tkinter_finder'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['desktop_app/logo.ico'],
 )
