@@ -22,14 +22,14 @@ class ExodiaDesktop(ctk.CTk):
         super().__init__()
 
         self.title("Exodia - Autonomous Command Center")
-        self.geometry("1100x700")
+        self.geometry("1280x800")
         
         # Grid layout
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
         # ─── SIDEBAR ───
-        self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color="#111111")
+        self.sidebar = ctk.CTkFrame(self, width=260, corner_radius=0, fg_color="#111111")
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(7, weight=1)
 
@@ -37,11 +37,11 @@ class ExodiaDesktop(ctk.CTk):
         try:
             logo_path = get_asset_path("logo.png")
             pil_img = Image.open(logo_path)
-            self.logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(120, 90))
+            self.logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(200, 150))
             self.logo = ctk.CTkLabel(self.sidebar, text="", image=self.logo_img)
         except Exception:
             self.logo = ctk.CTkLabel(self.sidebar, text="EXODIA", font=ctk.CTkFont(size=24, weight="bold"))
-        self.logo.grid(row=0, column=0, padx=20, pady=(30, 30))
+        self.logo.grid(row=0, column=0, padx=20, pady=(40, 40))
 
         # Navigation Buttons
         self.btn_dash = ctk.CTkButton(self.sidebar, text="Dashboard", fg_color="#222222", hover_color="#333333", anchor="w", command=lambda: self.select_tab("dashboard"))
