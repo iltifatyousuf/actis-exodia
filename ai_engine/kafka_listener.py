@@ -18,9 +18,17 @@ AI_INFERENCE_TIME = Summary('actis_ai_inference_seconds', 'Time spent waiting fo
 
 from ai_engine.redis_cache import check_threat_cache, set_threat_cache
 
+from ai_engine.multi_agent_orchestrator import workflow
+from ai_engine.redis_cache import check_threat_cache, set_threat_cache
+from ai_engine.siem_forwarder import forward_to_siem
+from ai_engine.pinecone_memory import save_to_long_term_memory
+import json
+import time
+
 def analyze_threat_with_ai(alert_data: dict):
     """Passes the Kafka alert to the local ACTIS Exodia Agent."""
-    print(f"\n[ACTIS AI] Analyzing new network alert: {alert_data['alert_id']}...")
+    alert_id = alert_data.get('alert_id', 'unknown_id')
+    print(f"\n[ACTIS AI] Analyzing new network alert: {alert_id}...")
     
     # Check Redis Cache
     target_ip = alert_data.get("src_ip", "unknown")
@@ -31,7 +39,7 @@ def analyze_threat_with_ai(alert_data: dict):
             THREATS_MITIGATED.inc()
             return
 
-    print(f"\n[ACTIS ORCHESTRATOR] Routing alert {alert_data['alert_id']} to Sub-Agents...")
+    print(f"\n[ACTIS ORCHESTRATOR] Routing alert {alert_id} to Sub-Agents...")
     
     prompt = f"New network packet detected: {json.dumps(alert_data)}"
     
@@ -40,8 +48,6 @@ def analyze_threat_with_ai(alert_data: dict):
     
     final_response = ""
     try:
-        from ai_engine.multi_agent_orchestrator import workflow
-        
         # Stream the multi-agent workflow
         for chunk in workflow.stream({"messages": [HumanMessage(content=prompt)], "next_agent": ""}):
             for node_name, node_state in chunk.items():
@@ -53,9 +59,15 @@ def analyze_threat_with_ai(alert_data: dict):
         print("\n[Exodia] Threat successfully mitigated and logged for compliance.\n")
         THREATS_MITIGATED.inc()
         
-        # Save to Redis Hot Cache to prevent re-processing
+        # 1. Save to Redis Hot Cache (Short-term)
         if target_ip != "unknown":
             set_threat_cache(target_ip, {"action": final_response}, ttl_seconds=3600)
+            
+        # 2. Forward to SIEM / Splunk (Compliance & WORM Storage)
+        forward_to_siem(alert_id, alert_data, "Llama 3.2 Analysis", final_response)
+        
+        # 3. Crystallize to Pinecone (Global Long-Term Cloud Memory)
+        save_to_long_term_memory(alert_id, json.dumps(alert_data), final_response)
             
     except Exception as e:
         print(f"Error during Multi-Agent orchestration: {e}")
