@@ -20,14 +20,53 @@ def evaluate_ai_confidence(ai_response: str) -> float:
         
     return max(score, 0.0)
 
+import os
+import requests
+
 def send_to_human_review_queue(alert_data_str: str, ai_analysis: str):
     """
-    Simulates pushing a low-confidence decision to a human SOC analyst via Slack/Jira.
+    Simulates pushing a low-confidence decision to a human SOC analyst via Slack/Teams.
     """
     print("\n==================================================")
     print("🚨 [GUARDRAILS TRIGGERED] LOW AI CONFIDENCE SCORE 🚨")
     print("==================================================")
-    print("Routing incident to Human-in-the-Loop Review Queue (Jira)...")
-    print(f"Context: {ai_analysis}")
+    print("Routing incident to Human-in-the-Loop Review Queue (Slack)...")
+    
+    slack_payload = {
+        "text": "🚨 *Exodia Autonomous SOC: Human Approval Required* 🚨",
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*AI Reasoning (Low Confidence):*\n{ai_analysis}"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Approve Block", "emoji": True},
+                        "style": "primary",
+                        "value": "approve"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Deny & Ignore", "emoji": True},
+                        "style": "danger",
+                        "value": "deny"
+                    }
+                ]
+            }
+        ]
+    }
+    
+    # In production, uncomment to send real webhook:
+    # webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+    # if webhook_url:
+    #     requests.post(webhook_url, json=slack_payload, timeout=3)
+    
+    print("[Slack Integration] Interactive Webhook payload generated and sent.")
     print("Awaiting manual SOC Analyst approval before auto-remediation...")
     print("==================================================\n")

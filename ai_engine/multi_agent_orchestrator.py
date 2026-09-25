@@ -14,6 +14,7 @@ if PROJECT_ROOT not in sys.path:
 
 from ai_engine.tools.playbook_tools import block_ip_address, isolate_host
 from ai_engine.tools.qdrant_tools import search_past_breaches
+from ai_engine.tools.suricata_tools import generate_suricata_rule
 from ai_engine.guardrails import evaluate_ai_confidence, send_to_human_review_queue
 
 # --- 1. Define the Shared State ---
@@ -33,10 +34,10 @@ threat_agent_node = create_react_agent(
     state_modifier="You are the Threat Analysis Agent. Use the Qdrant vector database to search for historical CVEs and past breaches matching this attack pattern. Return a structured threat assessment."
 )
 
-remediation_tools = [block_ip_address, isolate_host]
+remediation_tools = [block_ip_address, isolate_host, generate_suricata_rule]
 remediation_agent_node = create_react_agent(
     llm, tools=remediation_tools,
-    state_modifier="You are the Remediation Agent. Based on the threat analysis, execute the appropriate SOAR playbook to block malicious IPs or isolate compromised hosts."
+    state_modifier="You are the Remediation Agent. Based on the threat analysis, execute the appropriate SOAR playbook to block malicious IPs or isolate compromised hosts. If the attack is novel, generate a Suricata rule to block the specific payload pattern permanently."
 )
 
 compliance_agent_node = create_react_agent(
