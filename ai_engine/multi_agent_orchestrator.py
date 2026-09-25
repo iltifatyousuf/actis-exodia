@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
 from ai_engine.tools.playbook_tools import block_ip_address, isolate_host
 from ai_engine.tools.qdrant_tools import search_past_breaches
 from ai_engine.tools.suricata_tools import generate_suricata_rule
+from ai_engine.tools.neo4j_tools import query_threat_graph
 from ai_engine.guardrails import evaluate_ai_confidence, send_to_human_review_queue
 
 # --- 1. Define the Shared State ---
@@ -28,10 +29,10 @@ MODEL_TEMP = float(os.getenv("EXODIA_LLM_TEMPERATURE", "0"))
 llm = ChatOllama(model=MODEL_NAME, temperature=MODEL_TEMP)
 
 # --- 3. Define the Sub-Agents ---
-threat_tools = [search_past_breaches]
+threat_tools = [search_past_breaches, query_threat_graph]
 threat_agent_node = create_react_agent(
     llm, tools=threat_tools,
-    state_modifier="You are the Threat Analysis Agent. Use the Qdrant vector database to search for historical CVEs and past breaches matching this attack pattern. Return a structured threat assessment."
+    state_modifier="You are the Threat Analysis Agent. Use Qdrant to search for historical CVEs, and Neo4j to map complex threat actor/ASN relationships. Return a structured threat assessment."
 )
 
 remediation_tools = [block_ip_address, isolate_host, generate_suricata_rule]
