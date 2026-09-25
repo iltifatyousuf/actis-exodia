@@ -28,10 +28,23 @@ remediation_agent_node = create_react_agent(llm, tools=remediation_tools, state_
 # Agent C: Compliance Mapping
 compliance_agent_node = create_react_agent(llm, tools=[], state_modifier="You are the Compliance Agent. Map the threat to SOC2 or ISO27001 requirements (e.g. CC6.1 Logical Access).")
 
+from ai_engine.guardrails import evaluate_ai_confidence, send_to_human_review_queue
+
 # --- 4. Define the Node Wrappers ---
 def threat_node(state: AgentState):
     result = threat_agent_node.invoke({"messages": state["messages"]})
-    return {"messages": [AIMessage(content=f"[Threat Agent]: {result['messages'][-1].content}")], "next_agent": "Remediation"}
+    return {"messages": [AIMessage(content=f"[Threat Agent]: {result['messages'][-1].content}")], "next_agent": "Guardrails"}
+
+def guardrails_node(state: AgentState):
+    """Eval layer: Checks if the AI is confident enough to allow auto-remediation."""
+    last_response = state["messages"][-1].content
+    confidence_score = evaluate_ai_confidence(last_response)
+    
+    if confidence_score < 0.80:
+        send_to_human_review_queue("Alert Data", last_response)
+        return {"messages": [AIMessage(content="[Guardrails]: Incident paused. Sent to Human-in-the-loop.")], "next_agent": "Compliance"}
+    else:
+        return {"next_agent": "Remediation"}
 
 def remediation_node(state: AgentState):
     result = remediation_agent_node.invoke({"messages": state["messages"]})
@@ -46,7 +59,7 @@ def supervisor_node(state: AgentState):
     """The supervisor decides who goes first or if the job is done."""
     last_message = state["messages"][-1].content
     
-    if "Compliance Agent" in last_message:
+    if "Compliance Agent" in last_message or "Human-in-the-loop" in last_message:
         return {"next_agent": "FINISH"}
     
     # Otherwise, kick off the analysis chain
@@ -57,6 +70,7 @@ workflow = StateGraph(AgentState)
 
 workflow.add_node("Supervisor", supervisor_node)
 workflow.add_node("Threat", threat_node)
+workflow.add_node("Guardrails", guardrails_node)
 workflow.add_node("Remediation", remediation_node)
 workflow.add_node("Compliance", compliance_node)
 
@@ -72,8 +86,17 @@ workflow.add_conditional_edges(
     }
 )
 
-# Linear flow: Threat -> Remediation -> Compliance -> Supervisor
-workflow.add_edge("Threat", "Remediation")
+workflow.add_conditional_edges(
+    "Guardrails",
+    lambda state: state["next_agent"],
+    {
+        "Remediation": "Remediation",
+        "Compliance": "Compliance"
+    }
+)
+
+# Linear flow
+workflow.add_edge("Threat", "Guardrails")
 workflow.add_edge("Remediation", "Compliance")
 workflow.add_edge("Compliance", "Supervisor")
 
