@@ -24,6 +24,12 @@ class ExodiaDesktop(ctk.CTk):
         self.title("Exodia - Autonomous Command Center")
         self.geometry("1280x800")
         
+        # Set Window and Taskbar Icon
+        try:
+            self.iconbitmap(get_asset_path("logo.ico"))
+        except Exception:
+            pass
+        
         # Grid layout
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)

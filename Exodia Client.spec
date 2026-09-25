@@ -5,7 +5,7 @@ a = Analysis(
     ['desktop_app/exodia_desktop.py'],
     pathex=[],
     binaries=[],
-    datas=[('venv/Lib/site-packages/customtkinter', 'customtkinter'), ('desktop_app/logo.png', 'desktop_app')],
+    datas=[('venv/Lib/site-packages/customtkinter', 'customtkinter'), ('desktop_app/logo.png', 'desktop_app'), ('desktop_app/logo.ico', 'desktop_app')],
     hiddenimports=['PIL', 'PIL._tkinter_finder'],
     hookspath=[],
     hooksconfig={},
