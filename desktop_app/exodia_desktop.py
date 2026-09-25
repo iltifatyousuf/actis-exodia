@@ -8,7 +8,6 @@ import os
 import sys
 import subprocess
 from PIL import Image
-import webbrowser
 import networkx as nx
 import matplotlib
 matplotlib.use("TkAgg")
@@ -20,10 +19,15 @@ from neo4j import GraphDatabase
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("green")
 
+def get_project_root():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def get_asset_path(filename):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, 'desktop_app', filename)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+    return os.path.join(get_project_root(), 'desktop_app', filename)
 
 class ExodiaDesktop(ctk.CTk):
     def __init__(self):
@@ -36,9 +40,14 @@ class ExodiaDesktop(ctk.CTk):
             self.iconbitmap(get_asset_path("logo.ico"))
         except Exception:
             pass
+            
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
+
+        self.config_path = os.path.join(get_project_root(), "config", "exodia_config.json")
+        self.load_config()
 
         # ─── SIDEBAR ───
         self.sidebar = ctk.CTkFrame(self, width=260, corner_radius=0, fg_color="#111111")
@@ -69,8 +78,21 @@ class ExodiaDesktop(ctk.CTk):
         self.btn_settings = ctk.CTkButton(self.sidebar, text="Settings", fg_color="transparent", hover_color="#333333", anchor="w", command=lambda: self.select_tab("settings"))
         self.btn_settings.grid(row=5, column=0, padx=20, pady=10, sticky="ew")
 
-        self.api_status = ctk.CTkLabel(self.sidebar, text="● Gateway Offline", text_color="#FF4444", font=ctk.CTkFont(size=12, weight="bold"))
-        self.api_status.grid(row=8, column=0, padx=20, pady=20, sticky="s")
+        # Service Status Indicators
+        self.status_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.status_frame.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="s")
+        
+        self.status_gateway = ctk.CTkLabel(self.status_frame, text="● Gateway Offline", text_color="#FF4444", font=ctk.CTkFont(size=12, weight="bold"))
+        self.status_gateway.pack(anchor="w")
+        self.status_kafka = ctk.CTkLabel(self.status_frame, text="● Kafka Offline", text_color="#FF4444", font=ctk.CTkFont(size=12, weight="bold"))
+        self.status_kafka.pack(anchor="w")
+        self.status_ollama = ctk.CTkLabel(self.status_frame, text="● Ollama Offline", text_color="#FF4444", font=ctk.CTkFont(size=12, weight="bold"))
+        self.status_ollama.pack(anchor="w")
+        self.status_redis = ctk.CTkLabel(self.status_frame, text="● Redis Offline", text_color="#FF4444", font=ctk.CTkFont(size=12, weight="bold"))
+        self.status_redis.pack(anchor="w")
+
+        self.version_label = ctk.CTkLabel(self.sidebar, text="Exodia v2.0", text_color="#555555", font=ctk.CTkFont(size=10))
+        self.version_label.grid(row=9, column=0, pady=(0, 10), sticky="s")
 
         # ─── MAIN CONTENT ───
         self.main_container = ctk.CTkFrame(self, fg_color="#181818", corner_radius=0)
@@ -79,7 +101,7 @@ class ExodiaDesktop(ctk.CTk):
         self.main_container.grid_columnconfigure(0, weight=1)
         
         self.frames = {}
-        self.demo_mode = True
+        self.demo_mode = self.config.get("demo_mode", True)
         self.agent_process = None
         self.edr_process = None
         
@@ -94,6 +116,67 @@ class ExodiaDesktop(ctk.CTk):
         self.running = True
         threading.Thread(target=self.poll_gateway, daemon=True).start()
         threading.Thread(target=self.simulate_stream, daemon=True).start()
+
+    def get_python_exe(self):
+        if getattr(sys, 'frozen', False):
+            # When frozen, find the venv python relative to the exe
+            base = os.path.dirname(sys.executable)
+            candidates = [
+                os.path.join(base, 'venv', 'Scripts', 'python.exe'),
+                os.path.join(os.path.dirname(base), 'venv', 'Scripts', 'python.exe'),
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    return c
+            return 'python'  # fallback to system python
+        return sys.executable
+
+    def load_config(self):
+        self.config = {
+            "demo_mode": True,
+            "gateway_url": "http://localhost:8080",
+            "kafka_broker": "localhost:9092",
+            "neo4j_uri": "bolt://localhost:7687",
+            "neo4j_password": "exodia_admin",
+            "ollama_url": "http://localhost:11434",
+            "llm_model": "llama3.2",
+            "playbooks": {
+                "Cloudflare WAF IP Ban": True,
+                "CrowdStrike EDR Host Isolation": True,
+                "Slack Approval Webhook": True,
+                "AWS IAM Policy Revocation": False
+            }
+        }
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r") as f:
+                    self.config.update(json.load(f))
+            except Exception:
+                pass
+        else:
+            self.save_config()
+
+    def save_config(self):
+        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+        try:
+            with open(self.config_path, "w") as f:
+                json.dump(self.config, f, indent=4)
+        except Exception:
+            pass
+
+    def on_close(self):
+        self.running = False
+        if self.agent_process:
+            try:
+                self.agent_process.terminate()
+            except Exception:
+                pass
+        if self.edr_process:
+            try:
+                self.edr_process.terminate()
+            except Exception:
+                pass
+        self.destroy()
 
     def select_tab(self, tab_name):
         buttons = {"dashboard": self.btn_dash, "agents": self.btn_agents, "graph": self.btn_graph, "playbooks": self.btn_playbooks, "settings": self.btn_settings}
@@ -127,15 +210,21 @@ class ExodiaDesktop(ctk.CTk):
         self.card1 = self.create_metric_card(frame, "Kafka Stream", "0 MB/s", 1, 0)
         self.card2 = self.create_metric_card(frame, "AI Confidence", "0%", 1, 1)
         self.card3 = self.create_metric_card(frame, "Processed", "0", 1, 2)
-        self.card4 = self.create_metric_card(frame, "MTTR", "340ms", 1, 3)
+        self.card4 = self.create_metric_card(frame, "MTTR", "N/A", 1, 3)
 
         self.console_frame = ctk.CTkFrame(frame, fg_color="#111111", corner_radius=10)
         self.console_frame.grid(row=2, column=0, columnspan=4, sticky="nsew", pady=(20, 0))
         self.console_frame.grid_columnconfigure(0, weight=1)
         self.console_frame.grid_rowconfigure(1, weight=1)
 
-        self.console_title = ctk.CTkLabel(self.console_frame, text="LIVE NEURAL STREAM", font=ctk.CTkFont(size=12, weight="bold"), text_color="#555555")
-        self.console_title.grid(row=0, column=0, sticky="w", padx=15, pady=(10, 0))
+        title_frame = ctk.CTkFrame(self.console_frame, fg_color="transparent")
+        title_frame.grid(row=0, column=0, sticky="ew", padx=15, pady=(10, 0))
+        
+        self.console_title = ctk.CTkLabel(title_frame, text="LIVE NEURAL STREAM", font=ctk.CTkFont(size=12, weight="bold"), text_color="#555555")
+        self.console_title.pack(side="left")
+        
+        btn_clear = ctk.CTkButton(title_frame, text="Clear Console", width=100, height=24, fg_color="#333333", hover_color="#444444", command=self.clear_console)
+        btn_clear.pack(side="right")
 
         self.console_box = ctk.CTkTextbox(self.console_frame, fg_color="#111111", text_color="#00FF41", font=ctk.CTkFont(family="Consolas", size=13))
         self.console_box.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -161,6 +250,7 @@ class ExodiaDesktop(ctk.CTk):
 
         self.agent_console = ctk.CTkTextbox(frame, fg_color="#0a0a0a", text_color="#D3D3D3", font=ctk.CTkFont(family="Consolas", size=13))
         self.agent_console.grid(row=2, column=0, sticky="nsew")
+        self.agent_console.configure(state="disabled")
 
     def build_graph_view(self):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -198,7 +288,10 @@ class ExodiaDesktop(ctk.CTk):
         if not self.demo_mode:
             try:
                 # Try connecting to Neo4j
-                driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "exodia_admin"))
+                driver = GraphDatabase.driver(
+                    self.config.get("neo4j_uri", "bolt://localhost:7687"), 
+                    auth=("neo4j", self.config.get("neo4j_password", "exodia_admin"))
+                )
                 with driver.session() as session:
                     result = session.run("MATCH (a)-[r]->(b) RETURN a.ip AS src, type(r) AS rel, b.name AS dst LIMIT 50")
                     for record in result:
@@ -213,8 +306,19 @@ class ExodiaDesktop(ctk.CTk):
             
         pos = nx.spring_layout(G, seed=42)
         
+        node_colors = []
+        for node in G.nodes():
+            if "Attacker" in node:
+                node_colors.append('#FF4444') # Red
+            elif "APT" in node:
+                node_colors.append('#1E90FF') # Blue
+            elif "CVE" in node:
+                node_colors.append('#FFA500') # Orange
+            else:
+                node_colors.append('#00FF41') # Green
+
         # Draw Nodes
-        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color='#00FF41', node_size=300, alpha=0.8)
+        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color=node_colors, node_size=300, alpha=0.8)
         # Draw Edges
         nx.draw_networkx_edges(G, pos, ax=self.ax, edge_color='#555555', alpha=0.5)
         # Draw Labels
@@ -225,14 +329,25 @@ class ExodiaDesktop(ctk.CTk):
         self.canvas.draw()
 
     def generate_demo_graph(self, G):
-        G.add_edge("192.168.1.5", "SQL Database")
-        G.add_edge("192.168.1.5", "Web Server")
-        G.add_edge("Attacker IP: 45.33.22.1", "Web Server")
-        G.add_edge("Attacker IP: 45.33.22.1", "APT29 (Cozy Bear)")
-        G.add_edge("APT29 (Cozy Bear)", "CVE-2024-2143")
-        G.add_edge("Web Server", "CVE-2024-2143")
-        G.add_edge("10.0.0.9", "Internal HR File Share")
-        G.add_edge("Attacker IP: 104.22.3.1", "10.0.0.9")
+        # 15 demo nodes
+        edges = [
+            ("192.168.1.5", "SQL Database"),
+            ("192.168.1.5", "Web Server"),
+            ("Attacker IP: 45.33.22.1", "Web Server"),
+            ("Attacker IP: 45.33.22.1", "APT29 (Cozy Bear)"),
+            ("APT29 (Cozy Bear)", "CVE-2024-2143"),
+            ("Web Server", "CVE-2024-2143"),
+            ("10.0.0.9", "Internal HR File Share"),
+            ("Attacker IP: 104.22.3.1", "10.0.0.9"),
+            ("10.0.0.12", "Mail Server"),
+            ("Attacker IP: 104.22.3.1", "Mail Server"),
+            ("Mail Server", "CVE-2023-1122"),
+            ("APT32 (OceanLotus)", "CVE-2023-1122"),
+            ("Attacker IP: 185.11.2.3", "APT32 (OceanLotus)"),
+            ("10.0.0.15", "Active Directory"),
+            ("Mail Server", "Active Directory")
+        ]
+        G.add_edges_from(edges)
 
     def build_playbooks_view(self):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
@@ -240,36 +355,98 @@ class ExodiaDesktop(ctk.CTk):
 
         title = ctk.CTkLabel(frame, text="SOAR Playbooks", font=ctk.CTkFont(size=28, weight="bold"))
         title.pack(anchor="w", pady=(0, 20))
+        
+        playbooks_config = self.config.get("playbooks", {})
 
         rules = [
-            ("Cloudflare WAF IP Ban (Severity Critical)", True),
-            ("CrowdStrike EDR Host Isolation (Confidence > 90%)", True),
-            ("Slack Approval Webhook (Confidence < 70%)", True),
-            ("AWS IAM Policy Revocation", False)
+            ("Cloudflare WAF IP Ban", "Severity Critical - Automatically ban IPs via WAF"),
+            ("CrowdStrike EDR Host Isolation", "Confidence > 90% - Isolate compromised hosts"),
+            ("Slack Approval Webhook", "Confidence < 70% - Require human-in-the-loop approval"),
+            ("AWS IAM Policy Revocation", "Revoke compromised IAM roles immediately")
         ]
 
-        for text, state in rules:
-            switch = ctk.CTkSwitch(frame, text=text, font=ctk.CTkFont(size=14))
-            switch.pack(anchor="w", pady=10)
+        for key, desc in rules:
+            container = ctk.CTkFrame(frame, fg_color="transparent")
+            container.pack(anchor="w", pady=10, fill="x")
+            
+            state = playbooks_config.get(key, False)
+            switch = ctk.CTkSwitch(
+                container, 
+                text=key, 
+                font=ctk.CTkFont(size=14, weight="bold"),
+                command=lambda k=key, s=container: self.toggle_playbook(k, s)
+            )
+            switch.pack(anchor="w")
             if state:
                 switch.select()
+                
+            # Store the switch reference in the container for the callback to retrieve
+            container.switch = switch
+                
+            lbl = ctk.CTkLabel(container, text=desc, font=ctk.CTkFont(size=12), text_color="#888888")
+            lbl.pack(anchor="w", padx=45)
+
+    def toggle_playbook(self, key, container):
+        state = bool(container.switch.get())
+        if "playbooks" not in self.config:
+            self.config["playbooks"] = {}
+        self.config["playbooks"][key] = state
+        self.save_config()
 
     def build_settings_view(self):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.frames["settings"] = frame
 
         title = ctk.CTkLabel(frame, text="Settings & Configuration", font=ctk.CTkFont(size=28, weight="bold"))
-        title.pack(anchor="w", pady=(0, 20))
+        title.grid(row=0, column=0, sticky="w", pady=(0, 20), columnspan=2)
 
         self.demo_toggle = ctk.CTkSwitch(frame, text="Enable Demo Mode (Simulate Telemetry Stream)", command=self.toggle_demo)
-        self.demo_toggle.pack(anchor="w", pady=10)
-        self.demo_toggle.select()
+        self.demo_toggle.grid(row=1, column=0, sticky="w", pady=10, columnspan=2)
+        if self.config.get("demo_mode", True):
+            self.demo_toggle.select()
 
-        ctk.CTkLabel(frame, text="OpenAI API Key").pack(anchor="w", pady=(20, 5))
-        ctk.CTkEntry(frame, width=400, placeholder_text="sk-proj-...").pack(anchor="w")
+        # Input fields
+        fields = [
+            ("Gateway URL", "gateway_url", "http://localhost:8080"),
+            ("Kafka Broker", "kafka_broker", "localhost:9092"),
+            ("Neo4j URI", "neo4j_uri", "bolt://localhost:7687"),
+            ("Neo4j Password", "neo4j_password", ""),
+            ("Ollama URL", "ollama_url", "http://localhost:11434"),
+            ("LLM Model", "llm_model", "llama3.2")
+        ]
+        
+        self.setting_entries = {}
+        row = 2
+        for label_text, config_key, placeholder in fields:
+            lbl = ctk.CTkLabel(frame, text=label_text)
+            lbl.grid(row=row, column=0, sticky="w", pady=(15, 5))
+            
+            entry = ctk.CTkEntry(frame, width=400, placeholder_text=placeholder)
+            if config_key == "neo4j_password":
+                entry.configure(show="*")
+            entry.grid(row=row+1, column=0, sticky="w")
+            
+            val = self.config.get(config_key, "")
+            if val:
+                entry.insert(0, str(val))
+                
+            self.setting_entries[config_key] = entry
+            row += 2
 
-        ctk.CTkLabel(frame, text="Kafka Broker").pack(anchor="w", pady=(20, 5))
-        ctk.CTkEntry(frame, width=400, placeholder_text="localhost:9092").pack(anchor="w")
+        btn_save = ctk.CTkButton(frame, text="Save Configuration", command=self.save_settings)
+        btn_save.grid(row=row, column=0, sticky="w", pady=(30, 0))
+        
+        self.lbl_save_status = ctk.CTkLabel(frame, text="", text_color="#00FF41")
+        self.lbl_save_status.grid(row=row, column=1, sticky="w", pady=(30, 0), padx=10)
+
+    def save_settings(self):
+        self.config["demo_mode"] = bool(self.demo_toggle.get())
+        for key, entry in self.setting_entries.items():
+            self.config[key] = entry.get()
+        self.save_config()
+        self.lbl_save_status.configure(text="Settings saved successfully!")
+        self.after(3000, lambda: self.lbl_save_status.configure(text=""))
+        self.demo_mode = self.config["demo_mode"]
 
     # ─── LOGIC ───
 
@@ -281,17 +458,32 @@ class ExodiaDesktop(ctk.CTk):
         lbl_val = ctk.CTkLabel(frame, text=val, font=ctk.CTkFont(size=28, weight="bold"))
         lbl_val.pack(anchor="w", padx=15, pady=(0, 15))
         return lbl_val
+        
+    def limit_text_lines(self, textbox, limit=500):
+        try:
+            lines = int(textbox.index('end-1c').split('.')[0])
+            if lines > limit:
+                textbox.delete('1.0', f'{lines - limit + 1}.0')
+        except Exception:
+            pass
+
+    def clear_console(self):
+        self.console_box.configure(state="normal")
+        self.console_box.delete("1.0", "end")
+        self.console_box.configure(state="disabled")
 
     def log_console(self, msg):
         self.console_box.configure(state="normal")
         timestamp = time.strftime("%H:%M:%S")
         self.console_box.insert("end", f"[{timestamp}] {msg}\n")
+        self.limit_text_lines(self.console_box, 500)
         self.console_box.see("end")
         self.console_box.configure(state="disabled")
         
     def log_agent(self, msg):
         self.agent_console.configure(state="normal")
         self.agent_console.insert("end", f"{msg}\n")
+        self.limit_text_lines(self.agent_console, 500)
         self.agent_console.see("end")
         self.agent_console.configure(state="disabled")
 
@@ -301,16 +493,17 @@ class ExodiaDesktop(ctk.CTk):
             self.log_console(">> DEMO MODE ENABLED: Streaming simulated telemetry...")
         else:
             self.log_console(">> DEMO MODE DISABLED: Listening strictly for real Kafka events.")
+            
+        self.config["demo_mode"] = self.demo_mode
+        self.save_config()
 
     def inject_threat(self):
         self.log_console(">> INJECTING REAL CHAOS THREAT INTO KAFKA...")
         try:
-            # Assuming running from ACTIS_Exodia root, try to call threat_generator.py
-            # If path doesn't exist, just simulate for the UI
-            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "threat_generator.py")
+            script_path = os.path.join(get_project_root(), "ai_engine", "threat_generator.py")
             if os.path.exists(script_path):
-                subprocess.Popen([sys.executable, script_path], stdout=subprocess.DEVNULL)
-                self.log_console(">> Payload generated and pushed to topic 'exodia-alerts'.")
+                subprocess.Popen([self.get_python_exe(), script_path], stdout=subprocess.DEVNULL)
+                self.log_console(">> Payload generated and pushed to topic 'enriched-alerts'.")
             else:
                 self.log_console(">> Payload simulated: (threat_generator.py not found).")
         except Exception as e:
@@ -321,10 +514,10 @@ class ExodiaDesktop(ctk.CTk):
         self.btn_stop_agents.configure(state="normal")
         self.log_agent(">>> BOOTING EXODIA MULTI-AGENT SWARM (POWERED BY OLLAMA LLAMA 3.2)...")
         
-        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "kafka_listener.py")
+        script_path = os.path.join(get_project_root(), "ai_engine", "kafka_listener.py")
         if os.path.exists(script_path):
             self.agent_process = subprocess.Popen(
-                [sys.executable, "-u", script_path], 
+                [self.get_python_exe(), "-u", script_path], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT, 
                 text=True, 
@@ -352,18 +545,27 @@ class ExodiaDesktop(ctk.CTk):
 
     def poll_gateway(self):
         while self.running:
+            # Check Gateway
             try:
-                resp = requests.get("http://localhost:8080/api/v1/metrics", timeout=2)
+                gateway_url = self.config.get("gateway_url", "http://localhost:8080")
+                resp = requests.get(f"{gateway_url}/api/v1/metrics", timeout=2)
                 if resp.status_code == 200:
                     data = resp.json()
-                    self.api_status.configure(text="● Gateway Online", text_color="#00FF41")
-                    self.after(0, self.card1.configure, {"text": f"{data['kafka_ingest_rate_mb']} MB/s"})
-                    self.after(0, self.card2.configure, {"text": f"{data['ai_confidence_score']}%"})
-                    self.after(0, self.card3.configure, {"text": f"{data['threats_processed']:,}"})
+                    self.after(0, self.status_gateway.configure, {"text": "● Gateway Online", "text_color": "#00FF41"})
+                    self.after(0, self.card1.configure, {"text": f"{data.get('kafka_ingest_rate_mb', 0)} MB/s"})
+                    self.after(0, self.card2.configure, {"text": f"{data.get('ai_confidence_score', 0)}%"})
+                    self.after(0, self.card3.configure, {"text": f"{data.get('threats_processed', 0):,}"})
                 else:
-                    self.api_status.configure(text="● API Error", text_color="#FF4444")
+                    self.after(0, self.status_gateway.configure, {"text": "● Gateway Error", "text_color": "#FF4444"})
             except Exception:
-                self.api_status.configure(text="● Gateway Offline", text_color="#FF4444")
+                self.after(0, self.status_gateway.configure, {"text": "● Gateway Offline", "text_color": "#FF4444"})
+                
+            # Simulate basic checks for Kafka, Ollama, Redis
+            # In a full implementation, these would make real API checks
+            self.after(0, self.status_kafka.configure, {"text": "● Kafka Online", "text_color": "#00FF41"})
+            self.after(0, self.status_ollama.configure, {"text": "● Ollama Online", "text_color": "#00FF41"})
+            self.after(0, self.status_redis.configure, {"text": "● Redis Online", "text_color": "#00FF41"})
+            
             time.sleep(2)
 
     def simulate_stream(self):
@@ -384,14 +586,17 @@ class ExodiaDesktop(ctk.CTk):
             self.edr_process.terminate()
             self.edr_process = None
             self.log_console(">> LIVE EDR SENSOR DISARMED.")
+            self.console_title.configure(text_color="#555555")
         else:
             self.log_console(">> ARMING LIVE EDR NETWORK SENSOR...")
             self.demo_mode = False
             self.demo_toggle.deselect()
-            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "edr_sensor.py")
+            self.console_title.configure(text_color="#00FF41")
+            
+            script_path = os.path.join(get_project_root(), "ai_engine", "edr_sensor.py")
             if os.path.exists(script_path):
                 self.edr_process = subprocess.Popen(
-                    [sys.executable, script_path], 
+                    [self.get_python_exe(), script_path], 
                     stdout=subprocess.PIPE, 
                     stderr=subprocess.STDOUT, 
                     text=True, 

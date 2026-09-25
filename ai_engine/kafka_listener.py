@@ -3,75 +3,92 @@ import json
 import time
 import sys
 
-from confluent_kafka import Consumer, KafkaError
+try:
+    from confluent_kafka import Consumer, KafkaError
+    from prometheus_client import start_http_server, Counter, Summary
+    KAFKA_AVAILABLE = True
+except ImportError as e:
+    print(f"[Warning] Kafka/Prometheus dependencies missing: {e}")
+    KAFKA_AVAILABLE = False
+
 from langchain_core.messages import HumanMessage
-from prometheus_client import start_http_server, Counter, Summary
 
 # --- Configuration (Environment Variables with Fallbacks) ---
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "enriched-alerts")
 PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT", "8000"))
 
-# --- Prometheus Metrics ---
-THREATS_PROCESSED = Counter('actis_threats_processed_total', 'Total number of network threats processed by the AI')
-THREATS_MITIGATED = Counter('actis_threats_mitigated_total', 'Total number of threats successfully blocked/mitigated')
-AI_INFERENCE_TIME = Summary('actis_ai_inference_seconds', 'Time spent waiting for the Llama 3.2 Multi-Agent Orchestrator')
+if KAFKA_AVAILABLE:
+    THREATS_PROCESSED = Counter('actis_threats_processed_total', 'Total number of network threats processed by the AI')
+    THREATS_MITIGATED = Counter('actis_threats_mitigated_total', 'Total number of threats successfully blocked/mitigated')
+    AI_INFERENCE_TIME = Summary('actis_ai_inference_seconds', 'Time spent waiting for the Llama 3.2 Multi-Agent Orchestrator')
+else:
+    class DummyMetric:
+        def inc(self, *args, **kwargs): pass
+        def observe(self, *args, **kwargs): pass
+    THREATS_PROCESSED = DummyMetric()
+    THREATS_MITIGATED = DummyMetric()
+    AI_INFERENCE_TIME = DummyMetric()
 
-# Add project root to sys.path so package imports work
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from ai_engine.redis_cache import check_threat_cache, set_threat_cache
+def dummy_check(ip): return None
+def dummy_set(ip, val, ttl): pass
+
+try:
+    from ai_engine.redis_cache import check_threat_cache, set_threat_cache
+except ImportError:
+    check_threat_cache = dummy_check
+    set_threat_cache = dummy_set
+
 from ai_engine.siem_forwarder import forward_to_siem
 from ai_engine.pinecone_memory import save_to_long_term_memory
 
 
 def analyze_threat_with_ai(alert_data: dict):
-    """Passes the Kafka alert to the local ACTIS Exodia Multi-Agent Orchestrator."""
     alert_id = alert_data.get('alert_id', 'unknown_id')
     print(f"\n[ACTIS AI] Analyzing new network alert: {alert_id}...")
-
-    # 1. Check Redis Hot Cache (Short-circuit expensive LLM calls)
-    target_ip = alert_data.get("src_ip", "unknown")
-    if target_ip != "unknown":
-        cached_verdict = check_threat_cache(target_ip)
-        if cached_verdict:
-            print(f"[FAST PATH] Cached verdict for {target_ip}: {cached_verdict.get('action', 'N/A')}")
-            THREATS_PROCESSED.inc()
-            THREATS_MITIGATED.inc()
-            return
-
-    # 2. Cache Miss -> Route to LangGraph Multi-Agent Orchestrator
-    print(f"\n[ACTIS ORCHESTRATOR] Cache miss. Routing alert {alert_id} to Sub-Agents...")
-    prompt = f"New network packet detected: {json.dumps(alert_data)}"
-
-    THREATS_PROCESSED.inc()
     start_time = time.time()
 
-    final_response = ""
     try:
-        # Lazy import to avoid circular dependency at module load time
+        target_ip = alert_data.get("src_ip", "unknown")
+        if target_ip != "unknown":
+            cached_verdict = check_threat_cache(target_ip)
+            if cached_verdict:
+                print(f"[FAST PATH] Cached verdict for {target_ip}: {cached_verdict.get('action', 'N/A')}")
+                THREATS_PROCESSED.inc()
+                THREATS_MITIGATED.inc()
+                return
+
+        print(f"\n[ACTIS ORCHESTRATOR] Cache miss. Routing alert {alert_id} to Sub-Agents...")
+        prompt = f"New network packet detected: {json.dumps(alert_data)}"
+
+        THREATS_PROCESSED.inc()
+
+        final_response = ""
         from ai_engine.multi_agent_orchestrator import workflow
+        
+        if not workflow:
+            raise Exception("Workflow failed to initialize.")
 
         for chunk in workflow.stream({"messages": [HumanMessage(content=prompt)], "next_agent": ""}):
             for node_name, node_state in chunk.items():
                 if node_name != "Supervisor":
-                    msg_content = node_state['messages'][-1].content
-                    final_response = msg_content
-                    print(f"\n{msg_content}")
+                    msgs = node_state.get('messages', [])
+                    if msgs:
+                        msg_content = msgs[-1].content
+                        final_response = msg_content
+                        print(f"\n{msg_content}")
 
         print("\n[Exodia] Threat successfully mitigated and logged for compliance.\n")
         THREATS_MITIGATED.inc()
 
-        # 3. Save to Redis Hot Cache (Short-term, 1 hour TTL)
         if target_ip != "unknown":
             set_threat_cache(target_ip, {"action": final_response}, ttl_seconds=3600)
 
-        # 4. Forward to SIEM / Splunk (Compliance & WORM Storage)
         forward_to_siem(alert_id, alert_data, "Llama 3.2 Analysis", final_response)
-
-        # 5. Crystallize to Pinecone (Global Long-Term Cloud Memory)
         save_to_long_term_memory(alert_id, json.dumps(alert_data), final_response)
 
     except Exception as e:
@@ -81,7 +98,10 @@ def analyze_threat_with_ai(alert_data: dict):
 
 
 def start_kafka_listener():
-    """Boots the Kafka consumer loop and Prometheus metrics server."""
+    if not KAFKA_AVAILABLE:
+        print("Kafka/Prometheus dependencies missing, cannot start listener.")
+        return
+        
     start_http_server(PROMETHEUS_PORT)
     print(f"[*] Prometheus Metrics Server started on port {PROMETHEUS_PORT}")
 

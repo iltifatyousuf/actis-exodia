@@ -1,3 +1,5 @@
+import os
+from datetime import datetime
 from langchain_core.tools import tool
 
 @tool
@@ -8,10 +10,8 @@ def generate_suricata_rule(threat_type: str, source_ip: str, payload_signature: 
     """
     print(f"\n[AI IDS ENGINE] Generating autonomous Suricata signature for {threat_type} from {source_ip}...")
     
-    # Generate a unique rule ID
     sid = hash(f"{threat_type}{source_ip}") % 1000000 + 1000000
     
-    # Construct the rule
     rule = f'drop tcp {source_ip} any -> $HOME_NET any (msg:"EXODIA AUTO-BLOCK: {threat_type} detected"; '
     
     if payload_signature:
@@ -21,7 +21,18 @@ def generate_suricata_rule(threat_type: str, source_ip: str, payload_signature: 
     
     print(f"[AI IDS ENGINE] Signature generated: \n    {rule}")
     
-    # In a real environment, we would push this to AWS Network Firewall or a local Suricata instance via API
-    print(f"[AI IDS ENGINE] Signature pushed to edge firewalls successfully.")
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs", "suricata_rules")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"rule_{sid}_{timestamp}.rules"
+    filepath = os.path.join(log_dir, filename)
+    
+    try:
+        with open(filepath, "w") as f:
+            f.write(rule + "\n")
+        print(f"[AI IDS ENGINE] Signature saved to {filepath}")
+    except Exception as e:
+        print(f"[Error] Failed to save Suricata rule: {e}")
     
     return f"Successfully generated and deployed Suricata rule (SID: {sid}) to block the pattern: {payload_signature}"

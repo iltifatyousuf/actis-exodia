@@ -1,12 +1,22 @@
 import os
 from langchain_core.tools import tool
 
-# In a real environment, you would use the official neo4j driver
-# from neo4j import GraphDatabase
-
 NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "exodia_graph_secret")
+
+try:
+    from neo4j import GraphDatabase
+    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    NEO4J_AVAILABLE = True
+except ImportError:
+    print("[Warning] neo4j python driver is missing. Threat graph queries will fail.")
+    driver = None
+    NEO4J_AVAILABLE = False
+except Exception as e:
+    print(f"[Warning] Failed to connect to Neo4j: {e}")
+    driver = None
+    NEO4J_AVAILABLE = False
 
 @tool
 def query_threat_graph(ip_address: str) -> str:
@@ -17,22 +27,28 @@ def query_threat_graph(ip_address: str) -> str:
     """
     print(f"\n[NEO4J GRAPH] Traversing Knowledge Graph for entity: {ip_address}...")
     
-    # Mocking the Neo4j Cypher query execution for local development
-    # Query: MATCH (ip:IP {address: $ip})-[:BELONGS_TO]->(asn:ASN)<-[:OPERATES_FROM]-(apt:ThreatActor) RETURN apt, asn
+    if not NEO4J_AVAILABLE or not driver:
+        return "ERROR: Neo4j database is offline or driver is missing."
+        
+    query = """
+    MATCH (ip:IP {address: $ip})-[:BELONGS_TO]->(asn:ASN)
+    OPTIONAL MATCH (asn)<-[:OPERATES_FROM]-(apt:ThreatActor)
+    RETURN ip.address AS IP, asn.id AS ASN, apt.name AS ThreatActor
+    """
     
-    # Hardcoded mock responses for demonstration
-    if ip_address.startswith("203."):
-        return """
-GRAPH RELATIONSHIPS FOUND:
-- IP (203.0.113.45) -[BELONGS_TO]-> ASN (AS13335 / Cloudflare)
-- ASN (AS13335) <-[OPERATES_FROM]- ThreatActor (APT-29 / Cozy Bear)
-- ThreatActor (APT-29) -[EXPLOITS]-> CVE (CVE-2023-38039)
-        """
-    elif ip_address.startswith("198."):
-        return """
-GRAPH RELATIONSHIPS FOUND:
-- IP (198.51.100.99) -[BELONGS_TO]-> ASN (AS4134 / China Telecom)
-- IP (198.51.100.99) -[PREVIOUSLY_USED_IN]-> AttackCampaign (Operation GhostRat)
-        """
-    else:
-        return f"No known relationships found in the Knowledge Graph for {ip_address}."
+    try:
+        with driver.session() as session:
+            result = session.run(query, ip=ip_address)
+            records = list(result)
+            
+            if not records:
+                return f"No known relationships found in the Knowledge Graph for {ip_address}."
+                
+            out = "GRAPH RELATIONSHIPS FOUND:\n"
+            for r in records:
+                out += f"- IP ({r['IP']}) -[BELONGS_TO]-> ASN ({r['ASN']})\n"
+                if r['ThreatActor']:
+                    out += f"- ASN ({r['ASN']}) <-[OPERATES_FROM]- ThreatActor ({r['ThreatActor']})\n"
+            return out
+    except Exception as e:
+        return f"ERROR querying Neo4j: {str(e)}"
