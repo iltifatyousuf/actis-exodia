@@ -31,9 +31,9 @@ if %errorlevel% neq 0 (
 timeout /t 10 >nul
 echo.
 
-echo 2. Starting Apache Flink Enrichment Job...
-cd /d "%PROJECT_DIR%data_pipeline"
-start "Flink Processor" cmd /c ""%VENV_PYTHON%" flink_enrichment_job.py & pause"
+echo 2. Starting Threat Simulator (Mock eBPF Data)...
+cd /d "%PROJECT_DIR%ai_engine"
+start "Threat Simulator" cmd /c ""%VENV_PYTHON%" threat_generator.py & pause"
 timeout /t 5 >nul
 echo.
 
@@ -47,12 +47,6 @@ echo 4. Starting FastAPI Gateway (Port 8080)...
 cd /d "%PROJECT_DIR%api_gateway"
 start "FastAPI Gateway" cmd /c ""%VENV_PYTHON%" -m uvicorn main:app --host 0.0.0.0 --port 8080 & pause"
 timeout /t 5 >nul
-echo.
-
-echo 5. Starting Hubble eBPF Threat Simulator...
-cd /d "%PROJECT_DIR%message_broker"
-start "Hubble Simulator" cmd /c ""%VENV_PYTHON%" hubble_simulator.py & pause"
-timeout /t 3 >nul
 echo.
 
 echo ============================================
