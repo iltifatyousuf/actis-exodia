@@ -13,7 +13,7 @@ class ExodiaDesktop(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Dagger - Exodia Command Center")
+        self.title("Exodia - Autonomous Command Center")
         self.geometry("1100x700")
         
         # Grid layout
@@ -25,7 +25,7 @@ class ExodiaDesktop(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(5, weight=1)
 
-        self.logo = ctk.CTkLabel(self.sidebar, text="DAGGER", font=ctk.CTkFont(size=24, weight="bold"))
+        self.logo = ctk.CTkLabel(self.sidebar, text="EXODIA", font=ctk.CTkFont(size=24, weight="bold"))
         self.logo.grid(row=0, column=0, padx=20, pady=(30, 30))
 
         self.btn_dash = ctk.CTkButton(self.sidebar, text="Dashboard", fg_color="#222222", hover_color="#333333", anchor="w")
