@@ -40,9 +40,9 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 // ─── Navbar Dropdown ───
 function NavDropdown({ label, items }: { label: string, items: { title: string, desc: string, href: string }[] }) {
   const [open, setOpen] = useState(false)
-  const timeout = useRef<NodeJS.Timeout>()
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const enter = () => { clearTimeout(timeout.current); setOpen(true) }
+  const enter = () => { if (timeout.current) clearTimeout(timeout.current); setOpen(true) }
   const leave = () => { timeout.current = setTimeout(() => setOpen(false), 200) }
 
   return (
