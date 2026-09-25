@@ -14,13 +14,19 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-echo 2. Waking up Llama 3.2 AI Agent (Kafka Listener)...
+echo 2. Waking up Apache Flink Real-Time Enrichment Job...
+cd C:\Users\Lenovo\.gemini\antigravity\scratch\ACTIS_Exodia\data_pipeline
+start "Apache Flink Processor" cmd /c "C:\Users\Lenovo\.gemini\antigravity\scratch\langchain_project\venv\Scripts\python.exe flink_enrichment_job.py & pause"
+timeout /t 5 >nul
+echo.
+
+echo 3. Waking up Llama 3.2 AI Agent (Kafka Listener)...
 cd C:\Users\Lenovo\.gemini\antigravity\scratch\ACTIS_Exodia\ai_engine
 start "ACTIS AI Agent" cmd /c "C:\Users\Lenovo\.gemini\antigravity\scratch\langchain_project\venv\Scripts\python.exe kafka_listener.py & pause"
 timeout /t 5 >nul
 echo.
 
-echo 3. Starting Hubble eBPF Network Simulator...
+echo 4. Starting Hubble eBPF Network Simulator...
 cd C:\Users\Lenovo\.gemini\antigravity\scratch\ACTIS_Exodia\message_broker
 C:\Users\Lenovo\.gemini\antigravity\scratch\langchain_project\venv\Scripts\python.exe hubble_simulator.py
 

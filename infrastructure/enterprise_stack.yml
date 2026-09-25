@@ -40,6 +40,8 @@ services:
     container_name: actis-prometheus
     ports:
       - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
   # 6. Grafana (Dashboards)
   grafana:

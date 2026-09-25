@@ -6,7 +6,15 @@ import sys
 
 # Configuration for Kafka Consumer
 KAFKA_BROKER = 'localhost:9092'
-TOPIC_NAME = 'network-alerts'
+TOPIC_NAME = 'enriched-alerts'
+
+from prometheus_client import start_http_server, Counter, Summary
+import time
+
+# --- Prometheus Metrics ---
+THREATS_PROCESSED = Counter('actis_threats_processed_total', 'Total number of network threats processed by the AI')
+THREATS_MITIGATED = Counter('actis_threats_mitigated_total', 'Total number of threats successfully blocked/mitigated')
+AI_INFERENCE_TIME = Summary('actis_ai_inference_seconds', 'Time spent waiting for the Llama 3.2 Multi-Agent Orchestrator')
 
 def analyze_threat_with_ai(alert_data: dict):
     """Passes the Kafka alert to the local ACTIS Exodia Agent."""
@@ -15,6 +23,9 @@ def analyze_threat_with_ai(alert_data: dict):
     print(f"\n[ACTIS ORCHESTRATOR] Routing alert {alert_data['alert_id']} to Sub-Agents...")
     
     prompt = f"New network packet detected: {json.dumps(alert_data)}"
+    
+    THREATS_PROCESSED.inc()
+    start_time = time.time()
     
     try:
         from ai_engine.multi_agent_orchestrator import orchestrator_app
@@ -25,11 +36,17 @@ def analyze_threat_with_ai(alert_data: dict):
                 if node_name != "Supervisor":
                     print(f"\n{node_state['messages'][-1].content}")
                     
-        print("\n[ACTIS] Threat successfully mitigated and logged for compliance.\n")
+        print("\n[Exodia] Threat successfully mitigated and logged for compliance.\n")
+        THREATS_MITIGATED.inc()
     except Exception as e:
         print(f"Error during Multi-Agent orchestration: {e}")
+    finally:
+        AI_INFERENCE_TIME.observe(time.time() - start_time)
 
 def start_kafka_listener():
+    # Start up the server to expose the metrics to Grafana/Prometheus on port 8000
+    start_http_server(8000)
+    print("[*] Prometheus Metrics Server started on port 8000")
     c = Consumer({
         'bootstrap.servers': KAFKA_BROKER,
         'group.id': 'actis-ai-group',
