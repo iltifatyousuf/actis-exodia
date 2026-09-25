@@ -1,203 +1,186 @@
 "use client"
-import React, { useState } from 'react'
+import React from 'react'
+import Link from 'next/link'
 
-export default function ExodiaDashboard() {
-  const [rules, setRules] = useState([
-    { id: 1, vector: 'SQL_INJECTION', confidence: '> 80%', action: 'GLOBAL_WAF', playbook: 'BLOCK_IP_ADDRESS', enabled: false },
-    { id: 2, vector: 'PORT_SCAN', confidence: '> 65%', action: 'HONEYPOT', playbook: 'ISOLATE_HOST', enabled: true },
-    { id: 3, vector: 'DDoS_ATTACK', confidence: '> 92%', action: 'CLOUDFLARE', playbook: 'RATE_LIMIT_ASN', enabled: true },
-    { id: 4, vector: 'DATA_EXFILTRATION', confidence: '< 80%', action: 'HUMAN-IN-THE-LOOP', playbook: 'REVIEW QUEUE', enabled: true },
-  ])
-
-  const toggleRule = (id: number) => {
-    setRules(rules.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r))
-  }
-
+export default function ExodiaLandingPage() {
   return (
-    <div className="min-h-screen bg-[#F3F4ED] text-[#222] font-mono flex items-center justify-center p-8">
-      <div className="bg-[#E6E8DB] w-full max-w-7xl min-h-[750px] rounded-[40px] border-2 border-[#D1D4C6] p-10 flex flex-col shadow-[inset_0_0_10px_rgba(255,255,255,0.5),20px_20px_60px_rgba(0,0,0,0.1),-5px_-5px_20px_rgba(255,255,255,0.8)]">
+    <div className="min-h-screen bg-[#E6E8DB] text-[#111111] font-mono selection:bg-[#111] selection:text-[#E6E8DB]">
+      
+      {/* Navbar */}
+      <nav className="fixed w-full top-0 bg-[#E6E8DB]/90 backdrop-blur-md border-b-[1.5px] border-[#111111] z-50 px-6 py-4 flex justify-between items-center">
+        <div className="text-2xl font-bold tracking-tight uppercase">EXODIA.</div>
+        <div className="hidden md:flex gap-8 font-semibold text-sm tracking-wide">
+          <Link href="#how-it-works" className="hover:opacity-60 transition-opacity">How it Works</Link>
+          <Link href="#services" className="hover:opacity-60 transition-opacity">Architecture</Link>
+          <Link href="#pricing" className="hover:opacity-60 transition-opacity">Pricing</Link>
+        </div>
+        <Link href="#demo" className="bg-[#111111] text-[#E6E8DB] px-6 py-2 rounded-full font-bold uppercase text-xs hover:bg-[#333] transition-colors">
+          Request Demo
+        </Link>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12">
+        <div className="flex-1">
+          <div className="inline-block border-[1.5px] border-[#111] rounded-full px-4 py-1 text-xs font-bold mb-6 tracking-wide">
+            V2.0 MULTI-AGENT ARCHITECTURE
+          </div>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-[0.9] mb-6">
+            The Autonomous <br />Security Operations Center.
+          </h1>
+          <p className="text-lg md:text-xl font-medium opacity-80 mb-8 max-w-lg leading-snug">
+            Stop managing 25+ fragmented security tools. Exodia fuses eBPF networks, Kafka streaming, and a LangGraph Multi-Agent AI into a single, unified brain.
+          </p>
+          <div className="flex gap-4">
+            <Link href="#demo" className="bg-[#111] text-[#E6E8DB] px-8 py-3 rounded-full font-bold uppercase tracking-wide hover:bg-[#333] transition-colors">
+              Deploy Exodia
+            </Link>
+            <Link href="#docs" className="border-[1.5px] border-[#111] rounded-full px-8 py-3 font-bold hover:bg-[#111] hover:text-[#E6E8DB] transition-all">
+              Read the Docs
+            </Link>
+          </div>
+        </div>
         
-        {/* Top Nav */}
-        <div className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col gap-1.5 cursor-pointer">
-              <div className="w-8 h-[2px] bg-[#222]"></div>
-              <div className="w-8 h-[2px] bg-[#222]"></div>
-              <div className="w-8 h-[2px] bg-[#222]"></div>
+        {/* Hero Graphic (Mini Dashboard) */}
+        <div className="flex-1 w-full relative">
+          <div className="border-[1.5px] border-[#111] rounded-[2rem] p-6 bg-[#F3F4ED] h-[400px] flex flex-col shadow-[4px_4px_0px_#111] hover:shadow-[6px_6px_0px_#111] hover:-translate-y-1 hover:-translate-x-1 transition-all">
+            <div className="flex justify-between items-center mb-8 border-b-[1.5px] border-[#111]/20 pb-4">
+              <div className="font-bold tracking-tight text-xl uppercase">Live Threat Ingestion</div>
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-black"></div>
+                <div className="w-3 h-3 rounded-full border-[1.5px] border-[#111]"></div>
+              </div>
             </div>
-            <h1 className="text-4xl leading-none tracking-tight font-bold">Exodia Enterprise</h1>
-          </div>
-          
-          <div className="flex items-center gap-8 text-sm font-bold opacity-80">
-            <span>REGION: US-EAST-1</span>
-            <span>UPTIME: 99.99%</span>
-            <span>14:41</span>
+            
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1 border-[1.5px] border-[#111] rounded-2xl p-4">
+                <div className="text-xs uppercase tracking-widest font-bold opacity-80 mb-2">KAFKA STREAM</div>
+                <div className="text-3xl font-bold">1,204 <span className="text-sm font-normal">MB/s</span></div>
+              </div>
+              <div className="flex-1 border-[1.5px] border-[#111] rounded-2xl p-4 bg-[#111] text-[#E6E8DB]">
+                <div className="text-xs uppercase tracking-widest font-bold mb-2">AI CONFIDENCE</div>
+                <div className="text-3xl font-bold">87.4%</div>
+              </div>
+            </div>
+            
+            <div className="border-[1.5px] border-[#111] rounded-2xl p-4 flex-1 flex flex-col justify-center relative overflow-hidden">
+              <div className="text-xs uppercase tracking-widest font-bold mb-1 relative z-10">ACTIVE SOAR MITIGATION</div>
+              <div className="font-medium relative z-10">Isolating Host: 192.168.1.45 via Cloudflare WAF</div>
+              <div className="w-full h-2 border-[1.5px] border-[#111] rounded-full mt-4 relative z-10 bg-[#E6E8DB]">
+                <div className="w-[68%] h-full bg-[#111] rounded-full"></div>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Main Grid */}
-        <div className="flex flex-1 gap-6">
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-24 border-t-[1.5px] border-[#111] bg-[#F3F4ED]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="mb-16 md:w-2/3">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4">How it works.</h2>
+            <p className="text-lg opacity-80 font-medium">The traditional SOC is dead. Alert fatigue is replaced by real-time stream enrichment and a swarm of specialized AI agents acting in milliseconds.</p>
+          </div>
           
-          {/* Left Column (35%) */}
-          <div className="w-[35%] flex flex-col gap-6">
-            
-            {/* Thermostat Card */}
-            <div className="border-[1.5px] border-[#222] rounded-[2rem] p-6 flex flex-col justify-between h-[250px]">
-              <div className="flex justify-between items-start">
-                <div className="text-xs uppercase tracking-widest font-bold opacity-80">OVERALL AI CONFIDENCE</div>
-                <div className="border-[2.5px] border-[#222] rounded-full p-1">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold bg-[#E6E8DB] border-4 border-[#222]">
-                    68%
-                  </div>
-                </div>
-              </div>
-              
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="border-[1.5px] border-[#111] shadow-[4px_4px_0px_#111] rounded-[2rem] p-8 bg-[#E6E8DB]">
+              <div className="text-5xl font-bold mb-4">01.</div>
+              <h3 className="text-xl font-bold mb-2">Listen at the Edge.</h3>
+              <p className="opacity-80 text-sm font-medium">Cilium eBPF sensors and Istio sidecars capture raw L3/L4 network packets and route them into a high-throughput Apache Kafka cluster.</p>
+            </div>
+            <div className="border-[1.5px] border-[#111] shadow-[4px_4px_0px_#111] rounded-[2rem] p-8 bg-[#111] text-[#E6E8DB]">
+              <div className="text-5xl font-bold mb-4">02.</div>
+              <h3 className="text-xl font-bold mb-2">Filter the Noise.</h3>
+              <p className="opacity-80 text-sm font-medium">Apache Flink intercepts the Kafka firehose, instantly dropping benign traffic and checking Redis hot-caches before waking up the AI.</p>
+            </div>
+            <div className="border-[1.5px] border-[#111] shadow-[4px_4px_0px_#111] rounded-[2rem] p-8 bg-[#E6E8DB]">
+              <div className="text-5xl font-bold mb-4">03.</div>
+              <h3 className="text-xl font-bold mb-2">The Multi-Agent Brain.</h3>
+              <p className="opacity-80 text-sm font-medium">A LangGraph Supervisor routes the threat to specialized Sub-Agents. They query Qdrant for context, execute SOAR playbooks, and log compliance.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Services / Architecture Section */}
+      <section id="services" className="py-24 border-t-[1.5px] border-[#111]">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tighter mb-12 text-center">Consolidating 25+ Tools.</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="border-[1.5px] border-[#111] rounded-3xl p-8 flex flex-col justify-between">
               <div>
-                <div className="text-sm font-bold opacity-80 mb-2">Analyzing Kafka streams...</div>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full border-[1.5px] border-[#222] flex items-center justify-center cursor-pointer">
-                    <div className="w-4 h-[2px] bg-[#222]"></div>
-                  </div>
-                  <div className="text-5xl tracking-tighter leading-none font-bold">87.4%</div>
-                  <div className="w-10 h-10 rounded-full border-[1.5px] border-[#222] flex items-center justify-center cursor-pointer relative">
-                    <div className="w-4 h-[2px] bg-[#222] absolute"></div>
-                    <div className="h-4 w-[2px] bg-[#222] absolute"></div>
-                  </div>
-                </div>
+                <div className="text-xs uppercase tracking-widest font-bold opacity-80 mb-4">THE BRAIN</div>
+                <h3 className="text-2xl font-bold mb-2">LangGraph Orchestrator</h3>
+                <p className="opacity-80 mb-6 text-sm font-medium">Not just a chatbot. Exodia uses an army of Llama 3.2 agents. Threat Analysts, SOAR Remediators, and SOC2 Compliance mappers working in perfect synchrony.</p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <span className="px-3 py-1 border-[1.5px] border-[#111] rounded-full text-xs font-bold">Llama 3.2</span>
+                <span className="px-3 py-1 border-[1.5px] border-[#111] rounded-full text-xs font-bold">LangGraph</span>
               </div>
             </div>
 
-            {/* Kafka Card */}
-            <div className="border-[1.5px] border-[#222] rounded-[2rem] p-6 flex flex-col relative flex-1">
-              <div className="flex justify-between items-start mb-6">
-                <div className="text-xs uppercase tracking-widest font-bold opacity-80">KAFKA CLUSTER</div>
-                <div className="text-right">
-                  <div className="text-xs uppercase tracking-widest font-bold opacity-80">INGEST RATE</div>
-                  <div className="text-2xl font-bold">1,204 MB/s</div>
-                </div>
+            <div className="border-[1.5px] border-[#111] rounded-3xl p-8 flex flex-col justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-widest font-bold opacity-80 mb-4">THE NETWORK</div>
+                <h3 className="text-2xl font-bold mb-2">Streaming Backbone</h3>
+                <p className="opacity-80 mb-6 text-sm font-medium">Zero-trust architecture powered by eBPF. We ingest millions of events per second with zero data loss, guaranteed by Avro schemas.</p>
               </div>
-              
-              <div className="flex justify-between items-end mt-auto">
-                <div className="flex gap-1 h-20 mt-auto">
-                  {[1,2,3,4,5,6,7,8,9].map(i => (
-                    <div key={i} className="w-2 h-full border-[1.5px] border-[#222] rounded-full"></div>
-                  ))}
-                </div>
-                
-                <div className="text-right">
-                  <div className="mb-4">
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">NETWORK LAG</div>
-                    <div className="text-xl font-bold">1.7ms</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">FLINK FILTER</div>
-                    <div className="text-xl tracking-wide font-bold">ON <span className="opacity-30">OFF</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right Column (65%) */}
-          <div className="w-[65%] flex flex-col gap-6">
-            
-            {/* Top Row of Right Col */}
-            <div className="flex gap-6 h-[250px]">
-              {/* Agents Card */}
-              <div className="flex-1 border-[1.5px] border-[#222] rounded-[2rem] p-6 flex flex-col relative">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="text-xs uppercase tracking-widest font-bold opacity-80">LANGGRAPH AGENTS</div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">THREATS PROCESSED</div>
-                    <div className="text-2xl font-bold">320k</div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-end mt-auto">
-                  <div>
-                    <div className="text-right">
-                      <div className="mb-4 text-left">
-                        <div className="text-xs uppercase tracking-widest font-bold opacity-80">WEEKLY TREND</div>
-                        <div className="text-xl font-bold">+1.6%</div>
-                      </div>
-                      <div className="text-left">
-                        <div className="text-xs uppercase tracking-widest font-bold opacity-80">TOTAL BLOCKED</div>
-                        <div className="text-xl font-bold">190k</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Qdrant / Airflow Card */}
-              <div className="flex-1 border-[1.5px] border-[#222] rounded-[2rem] p-6 flex flex-col relative bg-[#222] text-[#E6E8DB]">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="text-xs uppercase tracking-widest font-bold opacity-80">QDRANT VECTOR DB</div>
-                  <div className="text-right">
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">VECTORS</div>
-                    <div className="text-2xl font-bold">8.4M</div>
-                  </div>
-                </div>
-                <div className="mt-auto">
-                  <div className="mb-4">
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">LAST AIRFLOW SYNC</div>
-                    <div className="text-xl font-bold">03:00 AM</div>
-                  </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-widest font-bold opacity-80">INTEL SOURCES</div>
-                    <div className="text-lg tracking-wide font-bold">NVD, MITRE, MISP</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Row (Rules Table) */}
-            <div className="flex-1 border-[1.5px] border-[#222] rounded-[2rem] p-6 flex flex-col">
-              <div className="flex justify-between items-end mb-4">
-                <div className="text-2xl font-bold tracking-tight">Active Guardrail Rules</div>
-                <div className="text-xs font-bold cursor-pointer border-[1.5px] border-[#222] px-4 py-2 rounded-full hover:bg-[#222] hover:text-[#E6E8DB] transition-colors">+ ADD NEW RULE</div>
-              </div>
-              
-              <div className="border-b-[1px] border-[#222] opacity-20 mb-2"></div>
-
-              {/* Table Header */}
-              <div className="flex items-center py-2 text-[0.7rem] font-bold opacity-60 uppercase tracking-widest px-2">
-                <div className="w-[180px]">Threat Vector</div>
-                <div className="w-[100px]">Confidence</div>
-                <div className="flex-[1.5]">Routing Action</div>
-                <div className="flex-[1.5]">SOAR Playbook</div>
-                <div className="w-[80px] text-right">Auto-Block</div>
-              </div>
-              <div className="border-b-[1px] border-[#222] opacity-20"></div>
-
-              <div className="overflow-y-auto pr-2">
-                {rules.map((rule) => (
-                  <div key={rule.id} className="flex items-center py-4 border-b-[1px] border-[rgba(34,34,34,0.1)] text-sm font-bold px-2 hover:bg-[rgba(0,0,0,0.03)] rounded-lg transition-colors">
-                    <div className="w-[180px] tracking-tight uppercase">{rule.vector}</div>
-                    <div className="w-[100px]">{rule.confidence}</div>
-                    <div className="flex-[1.5] opacity-80 uppercase text-xs">{rule.action}</div>
-                    <div className={`flex-[1.5] uppercase text-xs ${rule.action === 'HUMAN-IN-THE-LOOP' ? 'text-red-700 font-extrabold' : 'opacity-80'}`}>
-                      {rule.playbook}
-                    </div>
-                    <div className="w-[80px] flex justify-end">
-                      <div 
-                        onClick={() => toggleRule(rule.id)}
-                        className={`w-14 h-7 border-[2px] border-[#222] rounded-full relative flex items-center p-0.5 cursor-pointer ${rule.enabled ? 'bg-[#222]' : 'bg-transparent'}`}
-                      >
-                        <span className={`text-[0.6rem] absolute font-bold ${rule.enabled ? 'text-[#E6E8DB] left-2' : 'text-[#222] right-2'}`}>
-                          {rule.enabled ? 'ON' : 'OFF'}
-                        </span>
-                        <div className={`w-5 h-5 rounded-full transition-transform ${rule.enabled ? 'bg-[#E6E8DB] translate-x-7' : 'bg-[#222] translate-x-0'}`}></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex gap-2 flex-wrap">
+                <span className="px-3 py-1 border-[1.5px] border-[#111] rounded-full text-xs font-bold">Apache Kafka</span>
+                <span className="px-3 py-1 border-[1.5px] border-[#111] rounded-full text-xs font-bold">Apache Flink</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 border-t-[1.5px] border-[#111] bg-[#F3F4ED]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4">Simple Pricing.</h2>
+            <p className="text-lg opacity-80 font-medium">Scale from a single Kubernetes cluster to a multi-region global mesh.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="border-[1.5px] border-[#111] rounded-[2rem] p-8 flex flex-col">
+              <div className="text-xs uppercase tracking-widest font-bold mb-2">STARTUP</div>
+              <div className="text-4xl font-bold mb-6">$499<span className="text-lg font-normal opacity-60">/mo</span></div>
+              <ul className="space-y-3 mb-8 flex-1 font-medium text-sm">
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#111] rounded-full"></div> Up to 1GB/s Kafka Ingest</li>
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#111] rounded-full"></div> Single-Agent Brain</li>
+              </ul>
+              <button className="w-full border-[1.5px] border-[#111] rounded-full py-3 font-bold hover:bg-[#111] hover:text-[#E6E8DB] transition-colors">Start Free Trial</button>
+            </div>
+
+            <div className="border-[1.5px] border-[#111] rounded-[2rem] p-8 flex flex-col bg-[#111] text-[#E6E8DB] shadow-[4px_4px_0px_rgba(0,0,0,0.3)] transform md:-translate-y-4">
+              <div className="text-xs uppercase tracking-widest font-bold mb-2 text-[#E6E8DB]">ENTERPRISE</div>
+              <div className="text-4xl font-bold mb-6">$2,499<span className="text-lg font-normal opacity-60">/mo</span></div>
+              <ul className="space-y-3 mb-8 flex-1 font-medium text-sm">
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#E6E8DB] rounded-full"></div> Unlimited Kafka Ingest</li>
+                <li className="flex items-center gap-2"><div class="w-2 h-2 bg-[#E6E8DB] rounded-full"></div> Full Multi-Agent Swarm</li>
+              </ul>
+              <button className="w-full rounded-full py-3 font-bold bg-[#E6E8DB] text-[#111] hover:bg-[#D1D4C6] transition-colors">Deploy Enterprise</button>
+            </div>
+
+            <div className="border-[1.5px] border-[#111] rounded-[2rem] p-8 flex flex-col">
+              <div className="text-xs uppercase tracking-widest font-bold mb-2">NATION-STATE</div>
+              <div className="text-4xl font-bold mb-6">Custom</div>
+              <ul className="space-y-3 mb-8 flex-1 font-medium text-sm">
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#111] rounded-full"></div> On-Premise Airgapped Install</li>
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#111] rounded-full"></div> Dedicated NVIDIA GPUs</li>
+              </ul>
+              <button className="w-full border-[1.5px] border-[#111] rounded-full py-3 font-bold hover:bg-[#111] hover:text-[#E6E8DB] transition-colors">Contact Sales</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 border-t-[1.5px] border-[#111] text-center text-sm font-medium opacity-80">
+        &copy; 2026 Exodia Enterprise Systems. All rights reserved.
+      </footer>
     </div>
   )
 }
