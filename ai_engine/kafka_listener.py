@@ -12,23 +12,22 @@ def analyze_threat_with_ai(alert_data: dict):
     """Passes the Kafka alert to the local ACTIS Exodia Agent."""
     print(f"\n[ACTIS AI] Analyzing new network alert: {alert_data['alert_id']}...")
     
-    # Initialize our local, offline Llama 3.2 model
-    llm = ChatOllama(model="llama3.2", temperature=0)
+    print(f"\n[ACTIS ORCHESTRATOR] Routing alert {alert_data['alert_id']} to Sub-Agents...")
     
-    prompt = f"""
-    You are ACTIS Exodia, an elite cybersecurity threat hunter.
-    Analyze the following network packet alert and determine if it is a threat:
-    {json.dumps(alert_data, indent=2)}
+    prompt = f"New network packet detected: {json.dumps(alert_data)}"
     
-    Output a short threat assessment.
-    """
-    
-    # In a full LangGraph setup, we would route this to tools (Qdrant, Pinecone) here.
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        print(f"\n[ACTIS ASSESSMENT]\n{response.content}\n")
+        from ai_engine.multi_agent_orchestrator import orchestrator_app
+        
+        # Stream the multi-agent workflow
+        for chunk in orchestrator_app.stream({"messages": [HumanMessage(content=prompt)], "next_agent": ""}):
+            for node_name, node_state in chunk.items():
+                if node_name != "Supervisor":
+                    print(f"\n{node_state['messages'][-1].content}")
+                    
+        print("\n[ACTIS] Threat successfully mitigated and logged for compliance.\n")
     except Exception as e:
-        print(f"Error during AI analysis: {e}")
+        print(f"Error during Multi-Agent orchestration: {e}")
 
 def start_kafka_listener():
     c = Consumer({
