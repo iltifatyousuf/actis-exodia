@@ -159,7 +159,7 @@ export default function ExodiaLandingPage() {
               <div className="text-4xl font-bold mb-6">$2,499<span className="text-lg font-normal opacity-60">/mo</span></div>
               <ul className="space-y-3 mb-8 flex-1 font-medium text-sm">
                 <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#E6E8DB] rounded-full"></div> Unlimited Kafka Ingest</li>
-                <li className="flex items-center gap-2"><div class="w-2 h-2 bg-[#E6E8DB] rounded-full"></div> Full Multi-Agent Swarm</li>
+                <li className="flex items-center gap-2"><div className="w-2 h-2 bg-[#E6E8DB] rounded-full"></div> Full Multi-Agent Swarm</li>
               </ul>
               <button className="w-full rounded-full py-3 font-bold bg-[#E6E8DB] text-[#111] hover:bg-[#D1D4C6] transition-colors">Deploy Enterprise</button>
             </div>
