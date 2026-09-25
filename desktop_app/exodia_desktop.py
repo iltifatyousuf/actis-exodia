@@ -254,12 +254,12 @@ class ExodiaDesktop(ctk.CTk):
     def start_agent_swarm(self):
         self.btn_start_agents.configure(state="disabled")
         self.btn_stop_agents.configure(state="normal")
-        self.log_agent(">>> BOOTING EXODIA MULTI-AGENT SWARM...")
+        self.log_agent(">>> BOOTING EXODIA MULTI-AGENT SWARM (POWERED BY OLLAMA LLAMA 3.2)...")
         
-        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "multi_agent_orchestrator.py")
+        script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "kafka_listener.py")
         if os.path.exists(script_path):
             self.agent_process = subprocess.Popen(
-                [sys.executable, script_path], 
+                [sys.executable, "-u", script_path], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT, 
                 text=True, 
