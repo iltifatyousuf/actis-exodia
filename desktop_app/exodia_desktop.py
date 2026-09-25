@@ -75,6 +75,7 @@ class ExodiaDesktop(ctk.CTk):
         self.frames = {}
         self.demo_mode = True
         self.agent_process = None
+        self.edr_process = None
         
         self.build_dashboard_view()
         self.build_agents_view()
@@ -110,6 +111,9 @@ class ExodiaDesktop(ctk.CTk):
 
         self.header = ctk.CTkLabel(frame, text="Autonomous Defense Dashboard", font=ctk.CTkFont(size=28, weight="bold"))
         self.header.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 20))
+
+        btn_edr = ctk.CTkButton(frame, text="🛡 Arm Live EDR Sensor", fg_color="#1E90FF", hover_color="#4169E1", command=self.toggle_edr)
+        btn_edr.grid(row=0, column=2, sticky="e", pady=(0, 20), padx=10)
 
         btn_inject = ctk.CTkButton(frame, text="⚠ Inject Chaos Threat", fg_color="#8B0000", hover_color="#A52A2A", command=self.inject_threat)
         btn_inject.grid(row=0, column=3, sticky="e", pady=(0, 20))
@@ -309,6 +313,34 @@ class ExodiaDesktop(ctk.CTk):
                 action = random.choice(actions)
                 log_msg = f"[AGENT:REMEDIATION] Threat: {event_type} | Source: {ip} | Decision: {action}"
                 self.after(0, self.log_console, log_msg)
+
+    def toggle_edr(self):
+        if self.edr_process:
+            self.edr_process.terminate()
+            self.edr_process = None
+            self.log_console(">> LIVE EDR SENSOR DISARMED.")
+        else:
+            self.log_console(">> ARMING LIVE EDR NETWORK SENSOR...")
+            self.demo_mode = False
+            self.demo_toggle.deselect()
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_engine", "edr_sensor.py")
+            if os.path.exists(script_path):
+                self.edr_process = subprocess.Popen(
+                    [sys.executable, script_path], 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.STDOUT, 
+                    text=True, 
+                    bufsize=1
+                )
+                threading.Thread(target=self.stream_edr_output, daemon=True).start()
+            else:
+                self.log_console(">> ERROR: edr_sensor.py not found.")
+
+    def stream_edr_output(self):
+        if self.edr_process:
+            for line in iter(self.edr_process.stdout.readline, ''):
+                self.after(0, self.log_console, line.strip())
+            self.edr_process.wait()
 
 if __name__ == "__main__":
     app = ExodiaDesktop()
