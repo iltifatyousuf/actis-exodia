@@ -4,10 +4,18 @@ import threading
 import time
 import json
 import random
+import os
+import sys
+from PIL import Image
 
 # Configure modern dark theme
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("green")
+
+def get_asset_path(filename):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, 'desktop_app', filename)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 class ExodiaDesktop(ctk.CTk):
     def __init__(self):
@@ -25,7 +33,14 @@ class ExodiaDesktop(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(7, weight=1)
 
-        self.logo = ctk.CTkLabel(self.sidebar, text="EXODIA", font=ctk.CTkFont(size=24, weight="bold"))
+        # Logo Image
+        try:
+            logo_path = get_asset_path("logo.png")
+            pil_img = Image.open(logo_path)
+            self.logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(120, 90))
+            self.logo = ctk.CTkLabel(self.sidebar, text="", image=self.logo_img)
+        except Exception:
+            self.logo = ctk.CTkLabel(self.sidebar, text="EXODIA", font=ctk.CTkFont(size=24, weight="bold"))
         self.logo.grid(row=0, column=0, padx=20, pady=(30, 30))
 
         # Navigation Buttons
