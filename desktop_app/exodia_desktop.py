@@ -9,6 +9,12 @@ import sys
 import subprocess
 from PIL import Image
 import webbrowser
+import networkx as nx
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
+from neo4j import GraphDatabase
 
 # Configure modern dark theme
 ctk.set_appearance_mode("Dark")
@@ -159,15 +165,74 @@ class ExodiaDesktop(ctk.CTk):
     def build_graph_view(self):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.frames["graph"] = frame
+        frame.grid_rowconfigure(2, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
         
-        title = ctk.CTkLabel(frame, text="Neo4j Threat Graph", font=ctk.CTkFont(size=28, weight="bold"))
-        title.pack(anchor="w", pady=(0, 10))
+        title = ctk.CTkLabel(frame, text="Live Neural Threat Graph", font=ctk.CTkFont(size=28, weight="bold"))
+        title.grid(row=0, column=0, sticky="w", pady=(0, 5))
         
-        desc = ctk.CTkLabel(frame, text="Visualize IP -> ASN -> APT -> CVE relationships mapped by the knowledge graph.", font=ctk.CTkFont(size=14), text_color="#888888")
-        desc.pack(anchor="w", pady=(0, 20))
+        desc = ctk.CTkLabel(frame, text="Interactive real-time mapping of attack vectors, APTs, and affected hosts.", font=ctk.CTkFont(size=14), text_color="#888888")
+        desc.grid(row=1, column=0, sticky="w", pady=(0, 20))
 
-        btn = ctk.CTkButton(frame, text="Launch Neo4j Browser", font=ctk.CTkFont(weight="bold"), command=lambda: webbrowser.open("http://localhost:7474"))
-        btn.pack(anchor="w")
+        # Controls
+        controls = ctk.CTkFrame(frame, fg_color="transparent")
+        controls.grid(row=0, column=1, rowspan=2, sticky="e")
+        btn_refresh = ctk.CTkButton(controls, text="Refresh Graph", command=self.refresh_graph)
+        btn_refresh.pack(side="right", padx=5)
+        
+        # Matplotlib Figure
+        plt.style.use("dark_background")
+        self.fig, self.ax = plt.subplots(figsize=(6, 4))
+        self.fig.patch.set_facecolor('#181818')
+        self.ax.set_facecolor('#181818')
+        
+        self.canvas = FigureCanvasTkAgg(self.fig, master=frame)
+        self.canvas.get_tk_widget().grid(row=2, column=0, columnspan=2, sticky="nsew")
+        
+        self.refresh_graph()
+
+    def refresh_graph(self):
+        self.ax.clear()
+        G = nx.Graph()
+        
+        if not self.demo_mode:
+            try:
+                # Try connecting to Neo4j
+                driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "exodia_admin"))
+                with driver.session() as session:
+                    result = session.run("MATCH (a)-[r]->(b) RETURN a.ip AS src, type(r) AS rel, b.name AS dst LIMIT 50")
+                    for record in result:
+                        src = record["src"] or "Unknown IP"
+                        dst = record["dst"] or "Unknown Target"
+                        G.add_edge(src, dst)
+            except Exception as e:
+                self.log_console(f">> Graph DB Error: {e}. Falling back to topology simulation.")
+                self.generate_demo_graph(G)
+        else:
+            self.generate_demo_graph(G)
+            
+        pos = nx.spring_layout(G, seed=42)
+        
+        # Draw Nodes
+        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color='#00FF41', node_size=300, alpha=0.8)
+        # Draw Edges
+        nx.draw_networkx_edges(G, pos, ax=self.ax, edge_color='#555555', alpha=0.5)
+        # Draw Labels
+        nx.draw_networkx_labels(G, pos, ax=self.ax, font_size=8, font_color='white', font_family='sans-serif')
+        
+        self.ax.margins(0.2)
+        self.ax.axis("off")
+        self.canvas.draw()
+
+    def generate_demo_graph(self, G):
+        G.add_edge("192.168.1.5", "SQL Database")
+        G.add_edge("192.168.1.5", "Web Server")
+        G.add_edge("Attacker IP: 45.33.22.1", "Web Server")
+        G.add_edge("Attacker IP: 45.33.22.1", "APT29 (Cozy Bear)")
+        G.add_edge("APT29 (Cozy Bear)", "CVE-2024-2143")
+        G.add_edge("Web Server", "CVE-2024-2143")
+        G.add_edge("10.0.0.9", "Internal HR File Share")
+        G.add_edge("Attacker IP: 104.22.3.1", "10.0.0.9")
 
     def build_playbooks_view(self):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
